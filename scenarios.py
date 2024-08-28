@@ -37,31 +37,6 @@ class Scenario():
     def __eq__(self, other):
         return self.n == other.n and self.credentials == other.credentials
     
-    # TODO: Remove this function and instantiate a class for priority mechanisms
-    # Returns true if the input priority mechanism (via the rule) succeeds in this scenario.
-    def priority_rule(self, rule: [int]) -> bool:
-        for x in rule:
-            if self.credentials[x] == St.SAFE:
-                return True # User wins
-            elif self.credentials[x] == St.THEFT:
-                return False # Attacker wins
-        return False # Corner case (no safe, theft)
-    
-    # TODO: Remove this function and instantiate a class for PRE mechanisms
-    # Exception is (rule[1]) < (rule[2])
-    def priority_rule_with_exception(self, rule:[int]) -> bool:
-        if self.credentials[rule[0]] == St.LOST:
-            if self.credentials[rule[1]] == St.SAFE and self.credentials[rule[2]] == St.THEFT:
-                return False
-            if self.credentials[rule[1]] == St.THEFT and self.credentials[rule[2]] == St.SAFE:
-                return True
-        for x in rule:
-            if self.credentials[x] == St.SAFE:
-                return True # User wins
-            elif self.credentials[x] == St.THEFT:
-                return False # Attacker wins
-        return False # Corner case (no safe, theft)
-
     def is_complement(self, other) -> bool:
         if self.n != other.n:
             return False
@@ -76,7 +51,8 @@ class Scenario():
                 return False
         return True
 
-    # Returns true only if for all credentials are worse or equal. In all other cases, returns false.
+    # Returns true only if for all credentials are worse or equal. 
+    #  In all other cases, returns false.
     def worse_or_equal(self, other) -> bool:
         if self.n != other.n:
             return False
@@ -110,7 +86,6 @@ def generate_all_scenarios(n):
                 Scenario(1, [St.SAFE])]
 
     ret = generate_all_scenarios(n-1)
-    # print(n, ret)
     final = []
     for st in St:
         for s in ret:
@@ -119,10 +94,7 @@ def generate_all_scenarios(n):
             final.append(Scenario(n, creds1))
     return final
 
-num_creds = 3
-all_scenarios = generate_all_scenarios(num_creds)
-
-# A scenario is special if it has at least one SAFE and one THEFT
+# A scenario is special if it has at least one SAFE and one THEFT credential.
 def is_special(s: Scenario):
     num_safe = 0
     num_theft = 0
@@ -140,4 +112,3 @@ def generate_all_special_scenarios(n):
         if is_special(s):
             special_scenarios.append(s)
     return special_scenarios
-
