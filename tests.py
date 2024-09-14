@@ -3,6 +3,20 @@ from maximal_mechanisms import *
 
 import unittest
 
+class TestScenarios(unittest.TestCase):
+    def test_all_scenarios(self):
+        all_scenarios = generate_all_scenarios(2)
+        self.assertEqual(len(all_scenarios), 16)
+        for s in all_scenarios:
+            self.assertEqual(len(s.credential_states), 2)
+        # Check that the scenarios are unique
+        self.assertEqual(len(set(all_scenarios)), 16)
+
+        all_scenarios = generate_all_scenarios(3)
+        self.assertEqual(len(all_scenarios), 64)
+        for s in all_scenarios:
+            self.assertEqual(len(s.credential_states), 3)
+
 class WorseOrEqual(unittest.TestCase) :
     def test_credential_states(self):
         worse_or_equal(St.THEFT, St.THEFT) == True
@@ -63,19 +77,19 @@ class TestScenarios(unittest.TestCase):
         c1 = complement(s1)
         c2 = complement(s2)
         
-        self.assertEqual(c1.credentials, [St.SAFE, St.THEFT, St.THEFT])
-        self.assertEqual(c2.credentials, [St.THEFT, St.LEAKED, St.LOST])
+        self.assertEqual(c1.credential_states, [St.SAFE, St.THEFT, St.THEFT])
+        self.assertEqual(c2.credential_states, [St.THEFT, St.LEAKED, St.LOST])
     
     def test_generate_all_scenarios(self):
         all_scenarios = generate_all_scenarios(2)
         self.assertEqual(len(all_scenarios), 16)
         for s in all_scenarios:
-            self.assertEqual(len(s.credentials), 2)
+            self.assertEqual(len(s.credential_states), 2)
 
         all_scenarios = generate_all_scenarios(3)
         self.assertEqual(len(all_scenarios), 64)
         for s in all_scenarios:
-            self.assertEqual(len(s.credentials), 3)
+            self.assertEqual(len(s.credential_states), 3)
     
     def test_is_special(self):
         s1 = Scenario(3, [St.THEFT, St.LEAKED, St.SAFE])
@@ -109,6 +123,71 @@ class TestPriorityMechanisms(unittest.TestCase):
         self.assertTrue(m.succeeds(s5))
         self.assertTrue(m.succeeds(s6))
     
+    def test_profile_two_creds(self):
+        m = PriorityMechanism([0, 1], False)
+        profile = m.profile()
+        self.assertEqual(len(profile), 6)
+        self.assertEqual(set(profile), set([
+            Scenario(2, [St.SAFE, St.SAFE]),
+            Scenario(2, [St.SAFE, St.LEAKED]),
+            Scenario(2, [St.SAFE, St.LOST]),
+            Scenario(2, [St.SAFE, St.THEFT]),
+            Scenario(2, [St.LEAKED, St.SAFE]),
+            Scenario(2, [St.LOST, St.SAFE]),
+        ]))
+
+        m = PriorityMechanism([1, 0], False)
+        profile = m.profile()
+        self.assertEqual(len(profile), 6)
+        self.assertEqual(set(profile), set([
+            Scenario(2, [St.SAFE, St.SAFE]),
+            Scenario(2, [St.LEAKED, St.SAFE]),
+            Scenario(2, [St.LOST, St.SAFE]),
+            Scenario(2, [St.THEFT, St.SAFE]),
+            Scenario(2, [St.SAFE, St.LEAKED]),
+            Scenario(2, [St.SAFE, St.LOST]),
+        ]))
+    
+    def test_profile_three_creds(self):
+        m = PriorityMechanism([0, 1, 2], False)
+        profile = m.profile()
+        self.assertEqual(len(profile), 28) # (4^3 - 2^3) / 2 = 28
+        self.assertEqual(set(profile), set([
+            # All 16 scenarios where the first credential is safe
+            Scenario(3, [St.SAFE, St.SAFE, St.SAFE]),
+            Scenario(3, [St.SAFE, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.SAFE, St.LOST]),
+            Scenario(3, [St.SAFE, St.SAFE, St.THEFT]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.LOST]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.THEFT]),
+            Scenario(3, [St.SAFE, St.LOST, St.SAFE]),
+            Scenario(3, [St.SAFE, St.LOST, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.LOST, St.LOST]),
+            Scenario(3, [St.SAFE, St.LOST, St.THEFT]),
+            Scenario(3, [St.SAFE, St.THEFT, St.SAFE]),
+            Scenario(3, [St.SAFE, St.THEFT, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.THEFT, St.LOST]),
+            Scenario(3, [St.SAFE, St.THEFT, St.THEFT]),
+            # All 4 scenarios where the first credential is leaked but second is safe
+            Scenario(3, [St.LEAKED, St.SAFE, St.SAFE]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.LOST]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.THEFT]),
+            # All 4 scenarios where the first credential is lost but second is safe
+            Scenario(3, [St.LOST, St.SAFE, St.SAFE]),
+            Scenario(3, [St.LOST, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.LOST, St.SAFE, St.LOST]),
+            Scenario(3, [St.LOST, St.SAFE, St.THEFT]),
+            # first two credentials are leaked / lost, third is safe
+            Scenario(3, [St.LEAKED, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.LEAKED, St.LOST, St.SAFE]),
+            Scenario(3, [St.LOST, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.LOST, St.LOST, St.SAFE]),
+        ]))
+
+class TestPREMechanisms(unittest.TestCase):    
     def test_priority_with_exception(self):
         # decider_one
         s1 = Scenario(4, [St.SAFE, St.SAFE, St.THEFT, St.THEFT])
@@ -129,6 +208,86 @@ class TestPriorityMechanisms(unittest.TestCase):
         s6 = Scenario(4, [St.LOST, St.LOST, St.SAFE, St.THEFT])
         self.assertFalse(m.succeeds(s6))
 
+class TestMajorityMechanisms(unittest.TestCase):
+    def test_majority_two_creds(self):
+        t = lambda x, y: uniform_priority_tie_breaker(x, y, [0, 1])
+        m = MajorityMechanism(2, t)
+        p = m.profile()
+        self.assertEqual(len(p), 6)
+        self.assertEqual(set(p), set([
+            Scenario(2, [St.SAFE, St.SAFE]),
+            Scenario(2, [St.SAFE, St.LEAKED]),
+            Scenario(2, [St.SAFE, St.LOST]),
+            Scenario(2, [St.SAFE, St.THEFT]),
+            Scenario(2, [St.LEAKED, St.SAFE]),
+            Scenario(2, [St.LOST, St.SAFE]),
+        ]))
+    
+    def test_majority_three_creds(self):
+        t = lambda x, y: uniform_priority_tie_breaker(x, y, [0, 1, 2])
+        m = MajorityMechanism(3, t)
+        p = m.profile()
+        self.assertEqual(len(p), 28)
+        self.assertEqual(set(p), set([
+            # All 10 scenarios where 2-of-3 credentials are safe
+            Scenario(3, [St.SAFE, St.SAFE, St.SAFE]),
+            Scenario(3, [St.SAFE, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.SAFE, St.LOST]),
+            Scenario(3, [St.SAFE, St.SAFE, St.THEFT]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.SAFE, St.LOST, St.SAFE]),
+            Scenario(3, [St.SAFE, St.THEFT, St.SAFE]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.SAFE]),
+            Scenario(3, [St.LOST, St.SAFE, St.SAFE]),
+            Scenario(3, [St.THEFT, St.SAFE, St.SAFE]),
+            # All 12 scenarios where one is safe, rest two are not stolen
+            Scenario(3, [St.SAFE, St.LEAKED, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.LOST, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.LOST]),
+            Scenario(3, [St.SAFE, St.LOST, St.LOST]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.LOST, St.SAFE, St.LEAKED]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.LOST]),
+            Scenario(3, [St.LOST, St.SAFE, St.LOST]),
+            Scenario(3, [St.LEAKED, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.LOST, St.LEAKED, St.SAFE]),
+            Scenario(3, [St.LEAKED, St.LOST, St.SAFE]),
+            Scenario(3, [St.LOST, St.LOST, St.SAFE]),
+            # All 6 scenarios where one is stolen, one is safe, but the tie breaker is needed
+            Scenario(3, [St.SAFE, St.THEFT, St.LEAKED]),
+            Scenario(3, [St.SAFE, St.THEFT, St.LOST]),
+            Scenario(3, [St.SAFE, St.LEAKED, St.THEFT]),
+            Scenario(3, [St.SAFE, St.LOST, St.THEFT]),
+            Scenario(3, [St.LEAKED, St.SAFE, St.THEFT]),
+            Scenario(3, [St.LOST, St.SAFE, St.THEFT]),
+        ]))
+    
+    def test_diff_tie_breaks(self):
+        all_tie_breaks = enumerate_all_tie_breaking_functions_for_3_creds()
+        self.assertEqual(len(all_tie_breaks), 2**6)
+        for tb in all_tie_breaks:
+            m = MajorityMechanism(3, lambda x, y: tie_breaker_function_3creds(x, y, tb))
+            p = m.profile()
+            self.assertEqual(len(p), 28)
+
+        m1 = MajorityMechanism(3, lambda x, y: tie_breaker_function_3creds(x, y, all_tie_breaks[0]))
+        m2 = MajorityMechanism(3, lambda x, y: tie_breaker_function_3creds(x, y, all_tie_breaks[1]))
+        self.assertNotEqual(m1.profile(), m2.profile())
+
+        # # Priority tie-breaks
+        # # All permutations of vectors of length 3 with elements 0, 1, 2
+        # perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+        # for priority in perms:
+        #     m = MajorityMechanism(3, lambda x, y: uniform_priority_tie_breaker(x, y, priority))
+        #     p = m.profile()
+        #     self.assertEqual(len(p), 28)
+
+        # # Different priority tie-breaks for 1-length and 2-length vectors
+        # for priority1 in perms:
+        #     for priority2 in perms:
+        #         priority = [priority1, priority2]
+        #         m = MajorityMechanism(3, lambda x, y: different_priority_tie_breaker(x, y, priority))
+        #         self.assertEqual(len(m.profile()), 28)        
 
 if __name__ == '__main__':
     unittest.main()

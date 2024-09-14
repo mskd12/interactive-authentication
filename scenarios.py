@@ -16,12 +16,12 @@ def worse_or_equal(st1, st2): # self is worse or equal than other
 class Scenario():
     def __init__(self, n, arr):
         self.n = n
-        self.credentials = arr
+        self.credential_states = arr
         self.safe = 0
         self.leaked = 0
         self.lost = 0
         self.theft = 0
-        for i in self.credentials:
+        for i in self.credential_states:
             if i == St.SAFE:
                 self.safe = self.safe + 1
             if i == St.THEFT:
@@ -32,22 +32,25 @@ class Scenario():
                 self.lost = self.lost + 1
 
     def __repr__(self):
-        return "Scenario: %s" % (self.credentials)
+        return "Scenario: %s" % (self.credential_states)
     
     def __eq__(self, other):
-        return self.n == other.n and self.credentials == other.credentials
+        return self.n == other.n and self.credential_states == other.credential_states
+    
+    def __hash__(self):
+        return hash(tuple(self.credential_states))
     
     def is_complement(self, other) -> bool:
         if self.n != other.n:
             return False
-        for idx, cred in enumerate(self.credentials):
-            if cred == St.SAFE and other.credentials[idx] != St.THEFT:
+        for idx, cred in enumerate(self.credential_states):
+            if cred == St.SAFE and other.credential_states[idx] != St.THEFT:
                 return False
-            if cred == St.THEFT and other.credentials[idx] != St.SAFE:
+            if cred == St.THEFT and other.credential_states[idx] != St.SAFE:
                 return False
-            if cred == St.LEAKED and other.credentials[idx] != St.LEAKED:
+            if cred == St.LEAKED and other.credential_states[idx] != St.LEAKED:
                 return False
-            if cred == St.LOST and other.credentials[idx] != St.LOST:
+            if cred == St.LOST and other.credential_states[idx] != St.LOST:
                 return False
         return True
 
@@ -57,13 +60,13 @@ class Scenario():
         if self.n != other.n:
             return False
         for i in range(self.n):
-            if not worse_or_equal(self.credentials[i], other.credentials[i]):
+            if not worse_or_equal(self.credential_states[i], other.credential_states[i]):
                 return False
         return True
 
 def complement(s: Scenario):
     scomp = []
-    for cred in s.credentials:
+    for cred in s.credential_states:
         if cred == St.LEAKED:
             scomp.append(St.LEAKED)
         elif cred == St.LOST:
@@ -75,30 +78,37 @@ def complement(s: Scenario):
     return Scenario(s.n, scomp)
 
 
-import copy
 from copy import deepcopy
-import itertools
-def generate_all_scenarios(n):
+def generate_all_scenarios_internal(n):
     if n == 1:
         return [Scenario(1, [St.THEFT]), 
                 Scenario(1, [St.LEAKED]), 
                 Scenario(1, [St.LOST]), 
                 Scenario(1, [St.SAFE])]
 
-    ret = generate_all_scenarios(n-1)
+    ret = generate_all_scenarios_internal(n-1)
     final = []
     for st in St:
         for s in ret:
-            creds1 = copy.deepcopy(s.credentials)
+            creds1 = deepcopy(s.credential_states)
             creds1.append(st)
             final.append(Scenario(n, creds1))
     return final
+
+ALL_SCENARIOS = [generate_all_scenarios_internal(i) for i in range(1, 10)]
+
+# Cache the scenarios
+def generate_all_scenarios(n):
+    MAX_SUPPORTED = len(ALL_SCENARIOS)
+    if n > MAX_SUPPORTED:
+        raise Exception(n, "is not supported. Max supported is", MAX_SUPPORTED)
+    return ALL_SCENARIOS[n - 1]
 
 # A scenario is special if it has at least one SAFE and one THEFT credential.
 def is_special(s: Scenario):
     num_safe = 0
     num_theft = 0
-    for cred in s.credentials:
+    for cred in s.credential_states:
         if cred == St.SAFE:
             num_safe = num_safe + 1
         elif cred == St.THEFT:
