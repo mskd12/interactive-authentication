@@ -23,18 +23,19 @@ class PriorityMechanism(Mechanism):
     # A priority mechanism is defined by a rule and whether an exception applies
     def __init__(self, rule: List[int], exception: bool):
         super().__init__(len(rule))
-        if self.is_rule_well_defined(rule) == False:
-            raise Exception("Rule (%s) is not well defined" % (rule,))
         self.rule = rule
         self.exception = exception
+        if self.is_rule_well_defined() == False:
+            raise Exception("Rule (%s) is not well defined" % (rule,))
     
-    def is_rule_well_defined(self, rule):
+    def is_rule_well_defined(self):
         # Sort it
-        rule = sorted(rule)
+        rule = sorted(self.rule)
         # Check if it is of the form [0, 1, 2, ... len(rule) - 1]
         for i in range(len(rule)):
             if rule[i] != i:
                 return False
+        return True
     
     def __repr__(self):
         if self.exception:
@@ -102,14 +103,13 @@ class MajorityMechanism(Mechanism):
         else:
             return self.tie_breaker(user_credentials, attacker_credentials)
 
-def enumerate_all_tie_breaking_functions_for_3_creds():
+# n = 6 for generating tie-breaks for 3 credentials
+# Generate all possible n-tuples, e.g., if n=6, (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
+def enumerate_all_tie_breaking_functions(n):
     all_tie_breakers = []
-    # len(all_possible_inputs) in the tie_breaker_function is 6
-    # So a tie-breaker can decide in 2^6 = 64 ways. 
-    # Generate all possible 6-tuples (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
-    for i in range(2**6):
+    for i in range(2**n):
         tie_breaker = []
-        for j in range(6):
+        for j in range(n):
             tie_breaker.append((i >> j) & 1)
         all_tie_breakers.append(tie_breaker)
     return all_tie_breakers
@@ -118,6 +118,9 @@ def tie_breaker_function_3creds(S1, S2, tie_breaker) -> bool:
     all_possible_one_inputs = [([0], [1]), ([0], [2]), ([1], [2])] # Omitting ([1], [0]), ([2], [0]), ([2], [1])
     all_possible_two_inputs = [([0, 1], [1, 2]), ([0, 1], [0, 2]), ([1, 2], [0, 2])] # Omitting symmetric cases
     all_possible_inputs = all_possible_one_inputs + all_possible_two_inputs
+
+    if len(all_possible_inputs) != len(tie_breaker):
+        raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
 
     combined = zip(all_possible_inputs, tie_breaker)
     for (an_input, evaluation) in list(combined):
@@ -150,3 +153,46 @@ def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List
         if x in S2 and x not in S1:
             return False
     return False
+
+class HierarchicalMechanism(Mechanism):
+    def __init__(self, num_credentials, 
+                 rule: List[List[int]], 
+                 tie_breaker: Callable[[List[int], List[int]], bool]):
+        super().__init__(num_credentials)
+        self.rule = rule
+        self.tie_breaker = tie_breaker
+        if self.is_rule_well_defined() == False:
+            raise Exception("Rule (%s) is not well defined" % (rule,))
+    
+    def __repr__(self):
+        return """HierarchicalMechanism with %s credentials and 
+                priority rule %s and tie breaker %s""" % (self.num_credentials, self.rule, self.tie_breaker,)
+    
+    def is_rule_well_defined(self):
+        # Merge and sort it
+        rule = sorted([x for sublist in self.rule for x in sublist])
+        # Check if it is of the form [0, 1, 2, ... len(rule) - 1]
+        for i in range(len(rule)):
+            if rule[i] != i:
+                return False
+        return True
+
+    def succeeds(self, scenario) -> bool:
+        user_credentials = [i for (i, cred) in enumerate(scenario.credential_states) 
+                            if cred == St.SAFE or cred == St.LEAKED]
+        attacker_credentials = [i for (i, cred) in enumerate(scenario.credential_states) 
+                                if cred == St.THEFT or cred == St.LEAKED]
+
+        # Go level by level, starting from the highest level
+        for i in range(len(self.rule)):
+            user_credentials_level = len([x for x in user_credentials if x in self.rule[i]])
+            attacker_credentials_level = len([x for x in attacker_credentials if x in self.rule[i]])
+            if user_credentials_level > attacker_credentials_level:
+                return True
+            elif user_credentials_level < attacker_credentials_level:
+                return False
+
+        # If we reach here, we need to apply the tie breaker
+        if user_credentials == attacker_credentials:
+            return False
+        return self.tie_breaker(user_credentials, attacker_credentials)

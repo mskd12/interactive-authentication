@@ -3,6 +3,8 @@ from maximal_mechanisms import *
 
 import unittest
 
+from three_credentials import get_all_majority_profiles, get_all_priority_profiles
+
 class TestScenarios(unittest.TestCase):
     def test_all_scenarios(self):
         all_scenarios = generate_all_scenarios(2)
@@ -101,6 +103,35 @@ class TestScenarios(unittest.TestCase):
         self.assertTrue(is_special(s2))
         self.assertTrue(is_special(s3))
         self.assertFalse(is_special(s4))
+
+class TestWellDefinedRules(unittest.TestCase):
+    def test_priority_mechanism_is_rule_well_defined(self):
+        # Test cases for PriorityMechanism        
+        pm = PriorityMechanism([0, 1, 2], False)
+        self.assertTrue(pm.is_rule_well_defined())
+        # Next line throws an exception, so catch it
+        try:
+            pm = PriorityMechanism([2, 4, 1, 3], True)
+        except Exception as e:
+            self.assertEqual(str(e), "Rule ([2, 4, 1, 3]) is not well defined")
+
+    def test_hierarchical_mechanism_is_rule_well_defined(self):
+        # Test cases for HierarchicalMechanism
+        hm = HierarchicalMechanism(3, [[0, 1], [3, 2]], None)
+        self.assertTrue(hm.is_rule_well_defined())
+        hm = HierarchicalMechanism(9, [[0, 1, 8], [3, 2], [4, 5], [7, 6]], None)
+        self.assertTrue(hm.is_rule_well_defined())
+
+        # Next line throws an exception, so catch it
+        try:
+            hm = HierarchicalMechanism(3, [[0, 1], [1, 2]], None)
+        except Exception as e:
+            self.assertEqual(str(e), "Rule ([[0, 1], [1, 2]]) is not well defined")
+        try:
+            hm = HierarchicalMechanism(3, [[0, 1], [1, 3]], None)
+        except Exception as e:
+            self.assertEqual(str(e), "Rule ([[0, 1], [1, 3]]) is not well defined")
+
 
 class TestPriorityMechanisms(unittest.TestCase):
     def test_priority(self):
@@ -263,7 +294,7 @@ class TestMajorityMechanisms(unittest.TestCase):
         ]))
     
     def test_diff_tie_breaks(self):
-        all_tie_breaks = enumerate_all_tie_breaking_functions_for_3_creds()
+        all_tie_breaks = enumerate_all_tie_breaking_functions(6)
         self.assertEqual(len(all_tie_breaks), 2**6)
         for tb in all_tie_breaks:
             m = MajorityMechanism(3, lambda x, y: tie_breaker_function_3creds(x, y, tb))
@@ -288,6 +319,48 @@ class TestMajorityMechanisms(unittest.TestCase):
         #         priority = [priority1, priority2]
         #         m = MajorityMechanism(3, lambda x, y: different_priority_tie_breaker(x, y, priority))
         #         self.assertEqual(len(m.profile()), 28)        
+
+class TestHierarchicalMechanisms(unittest.TestCase):
+    def tie_breaker_function_2creds(self, S1, S2, tie_breaker, all_possible_inputs) -> bool:
+        if len(all_possible_inputs) != len(tie_breaker):
+            raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
+        
+        combined = zip(all_possible_inputs, tie_breaker)
+        for (an_input, evaluation) in list(combined):
+            if an_input == (S1, S2):
+                return bool(evaluation)
+            elif an_input == (S2, S1):
+                return bool(1 - evaluation)
+        
+        raise Exception("Input not found %s %s" % (S1, S2))
+
+    def test_three_creds(self):
+        three_cred_majority_profiles = get_all_majority_profiles()
+        three_cred_priority_profiles = get_all_priority_profiles()
+
+        tie_breaks = enumerate_all_tie_breaking_functions(2)
+        # HM with two creds at L2 and one at L1
+        for tb in tie_breaks:
+            print("Hierarchical 2-1 with tie breaker", tb)
+            all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
+            hm = HierarchicalMechanism(3, [[0, 1], [2]], lambda x, y: self.tie_breaker_function_2creds(x, y, tb, all_possible_inputs))
+            p = hm.profile()
+            self.assertEqual(len(p), 28)
+            # assert that its profile is equal to some majority mechanism
+            x = [(label, p1) for (label, p1) in three_cred_majority_profiles if p1 == p]
+            self.assertEqual(len(x), 1)
+            print(x[0][0])
+
+        # HM with two creds at L1 and one at L2
+        for tb in tie_breaks:
+            print("Hierarchical 1-2 with tie breaker", tb)
+            all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
+            hm = HierarchicalMechanism(3, [[2], [0, 1]], lambda x, y: self.tie_breaker_function_2creds(x, y, tb, all_possible_inputs))
+            p = hm.profile()
+            self.assertEqual(len(p), 28)
+            x = [(label, p1) for (label, p1) in three_cred_priority_profiles if p1 == p]
+            self.assertEqual(len(x), 1)
+            print(x[0][0])
 
 if __name__ == '__main__':
     unittest.main()
