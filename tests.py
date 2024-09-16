@@ -321,19 +321,6 @@ class TestMajorityMechanisms(unittest.TestCase):
         #         self.assertEqual(len(m.profile()), 28)        
 
 class TestHierarchicalMechanisms(unittest.TestCase):
-    def tie_breaker_function_2creds(self, S1, S2, tie_breaker, all_possible_inputs) -> bool:
-        if len(all_possible_inputs) != len(tie_breaker):
-            raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
-        
-        combined = zip(all_possible_inputs, tie_breaker)
-        for (an_input, evaluation) in list(combined):
-            if an_input == (S1, S2):
-                return bool(evaluation)
-            elif an_input == (S2, S1):
-                return bool(1 - evaluation)
-        
-        raise Exception("Input not found %s %s" % (S1, S2))
-
     def test_three_creds(self):
         three_cred_majority_profiles = get_all_majority_profiles()
         three_cred_priority_profiles = get_all_priority_profiles()
@@ -343,7 +330,7 @@ class TestHierarchicalMechanisms(unittest.TestCase):
         for tb in tie_breaks:
             print("Hierarchical 2-1 with tie breaker", tb)
             all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
-            hm = HierarchicalMechanism(3, [[0, 1], [2]], lambda x, y: self.tie_breaker_function_2creds(x, y, tb, all_possible_inputs))
+            hm = HierarchicalMechanism(3, [[0, 1], [2]], lambda x, y: break_ties(x, y, all_possible_inputs, tb))
             p = hm.profile()
             self.assertEqual(len(p), 28)
             # assert that its profile is equal to some majority mechanism
@@ -355,7 +342,7 @@ class TestHierarchicalMechanisms(unittest.TestCase):
         for tb in tie_breaks:
             print("Hierarchical 1-2 with tie breaker", tb)
             all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
-            hm = HierarchicalMechanism(3, [[2], [0, 1]], lambda x, y: self.tie_breaker_function_2creds(x, y, tb, all_possible_inputs))
+            hm = HierarchicalMechanism(3, [[2], [0, 1]], lambda x, y: break_ties(x, y, all_possible_inputs, tb))
             p = hm.profile()
             self.assertEqual(len(p), 28)
             x = [(label, p1) for (label, p1) in three_cred_priority_profiles if p1 == p]

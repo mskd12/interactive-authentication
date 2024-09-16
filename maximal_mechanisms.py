@@ -103,57 +103,6 @@ class MajorityMechanism(Mechanism):
         else:
             return self.tie_breaker(user_credentials, attacker_credentials)
 
-# n = 6 for generating tie-breaks for 3 credentials
-# Generate all possible n-tuples, e.g., if n=6, (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
-def enumerate_all_tie_breaking_functions(n):
-    all_tie_breakers = []
-    for i in range(2**n):
-        tie_breaker = []
-        for j in range(n):
-            tie_breaker.append((i >> j) & 1)
-        all_tie_breakers.append(tie_breaker)
-    return all_tie_breakers
-
-def tie_breaker_function_3creds(S1, S2, tie_breaker) -> bool:
-    all_possible_one_inputs = [([0], [1]), ([0], [2]), ([1], [2])] # Omitting ([1], [0]), ([2], [0]), ([2], [1])
-    all_possible_two_inputs = [([0, 1], [1, 2]), ([0, 1], [0, 2]), ([1, 2], [0, 2])] # Omitting symmetric cases
-    all_possible_inputs = all_possible_one_inputs + all_possible_two_inputs
-
-    if len(all_possible_inputs) != len(tie_breaker):
-        raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
-
-    combined = zip(all_possible_inputs, tie_breaker)
-    for (an_input, evaluation) in list(combined):
-        if an_input == (S1, S2):
-            return bool(evaluation)
-        elif an_input == (S2, S1):
-            return bool(1 - evaluation)
-    raise Exception("Input not found %s %s %s" % (S1, S2, list(combined)))
-
-def uniform_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[int]) -> bool:
-    if len(S1) != len(S2):
-        raise Exception("S1 and S2 must have the same length")
-    for x in rule:
-        if x in S1 and x not in S2:
-            return True
-        if x in S2 and x not in S1:
-            return False
-    return False
-
-# rule[i-1] defines priority rule for sets of length i
-def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List[int]]) -> bool:
-    if len(S1) != len(S2):
-        raise Exception("S1 and S2 must have the same length %s %s" % (S1, S2))
-    if len(S1) > len(rule):
-        raise Exception("Rule %s is not defined for sets of length %s" % (rule, len(S1)))
-    selected_rule = rule[len(S1) - 1]
-    for x in selected_rule:
-        if x in S1 and x not in S2:
-            return True
-        if x in S2 and x not in S1:
-            return False
-    return False
-
 class HierarchicalMechanism(Mechanism):
     def __init__(self, num_credentials, 
                  rule: List[List[int]], 
@@ -196,3 +145,66 @@ class HierarchicalMechanism(Mechanism):
         if user_credentials == attacker_credentials:
             return False
         return self.tie_breaker(user_credentials, attacker_credentials)
+
+#### We now provide some tools related to tie-breaking functions
+
+# n = 6 for generating tie-breaks for 3 credentials
+# Generate all possible n-tuples, e.g., if n=6, (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
+def enumerate_all_tie_breaking_functions(n):
+    all_tie_breakers = []
+    for i in range(2**n):
+        tie_breaker = []
+        for j in range(n):
+            tie_breaker.append((i >> j) & 1)
+        all_tie_breakers.append(tie_breaker)
+    return all_tie_breakers
+
+# S1 is submitted by the user, S2 is submitted by the attacker
+# all_possible_inputs is a list of tuples, each tuple is a pair of sets
+#   these correspond to the all possible (S1, S2)'s
+# tie_breaker is a list of 0s and 1s, each 0 or 1 corresponds to the evaluation of the corresponding input
+def break_ties(S1, S2, all_possible_inputs, tie_breaker) -> bool:
+    if len(all_possible_inputs) != len(tie_breaker):
+        raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
+
+    combined = zip(all_possible_inputs, tie_breaker)
+    for (an_input, evaluation) in list(combined):
+        if an_input == (S1, S2):
+            return bool(evaluation)
+        elif an_input == (S2, S1):
+            return bool(1 - evaluation)
+    raise Exception("Input not found %s %s" % (S1, S2))
+
+def tie_breaker_function_3creds(S1, S2, tie_breaker) -> bool:
+    all_possible_one_inputs = [([0], [1]), ([0], [2]), ([1], [2])] # Omitting ([1], [0]), ([2], [0]), ([2], [1])
+    all_possible_two_inputs = [([0, 1], [1, 2]), ([0, 1], [0, 2]), ([1, 2], [0, 2])] # Omitting symmetric cases
+    all_possible_inputs = all_possible_one_inputs + all_possible_two_inputs
+    return break_ties(S1, S2, all_possible_inputs, tie_breaker)
+
+## We now define some specific tie breaking functions (these are included in the above functions)
+
+# Uniform priority tie breaker: applies the priority rule uniformly
+def uniform_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[int]) -> bool:
+    if len(S1) != len(S2):
+        raise Exception("S1 and S2 must have the same length")
+    for x in rule:
+        if x in S1 and x not in S2:
+            return True
+        if x in S2 and x not in S1:
+            return False
+    return False
+
+# Different priority rule for sets of different lengths
+# rule[i-1] defines priority rule for sets of length i
+def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List[int]]) -> bool:
+    if len(S1) != len(S2):
+        raise Exception("S1 and S2 must have the same length %s %s" % (S1, S2))
+    if len(S1) > len(rule):
+        raise Exception("Rule %s is not defined for sets of length %s" % (rule, len(S1)))
+    selected_rule = rule[len(S1) - 1]
+    for x in selected_rule:
+        if x in S1 and x not in S2:
+            return True
+        if x in S2 and x not in S1:
+            return False
+    return False
