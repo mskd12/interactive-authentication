@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Callable, List
 from scenarios import Scenario, St, generate_all_scenarios
 
@@ -208,3 +207,17 @@ def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List
         if x in S2 and x not in S1:
             return False
     return False
+
+
+# Note: Some clever method to generate all the majority profiles without computing the mechanism..?
+# import itertools
+# from copy import deepcopy
+
+# for v in itertools.product('01', repeat=len(rest)):
+#     profile = deepcopy(majority_profile_prefix)
+#     for i, scenario in enumerate(rest):
+#         if v[i] == '1':
+#             scenario = complement(scenario)
+#         profile.append(scenario)
+#     # print(profile)
+#     majority_profiles.append(profile)

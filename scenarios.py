@@ -54,6 +54,28 @@ class Scenario():
                 return False
         return True
 
+    def priority_rule(self, rule: [int]) -> bool:
+        for x in rule:
+            if self.credential_states[x] == St.SAFE:
+                return True # User wins
+            elif self.credential_states[x] == St.THEFT:
+                return False # Attacker wins
+        return False # Corner case (no safe, theft)
+    
+    # Exception is (rule[1]) < (rule[2])
+    def priority_rule_with_exception(self, rule:[int]) -> bool:
+        if self.credential_states[rule[0]] == St.LOST:
+            if self.credential_states[rule[1]] == St.SAFE and self.credential_states[rule[2]] == St.THEFT:
+                return False
+            if self.credential_states[rule[1]] == St.THEFT and self.credential_states[rule[2]] == St.SAFE:
+                return True
+        for x in rule:
+            if self.credential_states[x] == St.SAFE:
+                return True # User wins
+            elif self.credential_states[x] == St.THEFT:
+                return False # Attacker wins
+        return False # Corner case (no safe, theft)
+
     # Returns true only if for all credentials are worse or equal. 
     #  In all other cases, returns false.
     def worse_or_equal(self, other) -> bool:
@@ -76,7 +98,6 @@ def complement(s: Scenario):
         else:
             scomp.append(St.SAFE)
     return Scenario(s.n, scomp)
-
 
 from copy import deepcopy
 def generate_all_scenarios_internal(n):

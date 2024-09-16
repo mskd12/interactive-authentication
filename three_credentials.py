@@ -1,7 +1,5 @@
 
-from typing import List
 from maximal_mechanisms import MajorityMechanism, PriorityMechanism, enumerate_all_tie_breaking_functions, tie_breaker_function_3creds
-from scenarios import Scenario
 
 def get_all_majority_profiles():
     # First get all majority profiles

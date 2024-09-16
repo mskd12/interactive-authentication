@@ -6,9 +6,9 @@
 
 Goals:
 
-- Given a priority or a majority mechanism, output its profile
+- Given a priority or a majority mechanism, output its profile (DONE)
 
-- Write a function that returns the complete maximal set for 3-credential mechanisms.
+- Write a function that returns the complete maximal set for 3-credential mechanisms (Close; get_all_3cred_profiles returns all the 3-credential majority, priority mechanisms)
 
 - Given a probability distribution, output the best mechanism from the complete maximal set. We can do this for 3-credential mechanisms. 
 
