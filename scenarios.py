@@ -6,10 +6,14 @@ class St(Enum):
     SAFE = 3
 
 # Note: This notion is only required for proving completeness of the 3-credential set.
-# THEFT is the worst, SAFE is the best. LEAKED and LOST undefined. 
 # False doesn't necessarily imply "not worse or equal".
+# st2 & st1
+# \stSafe &\mapsto \stSafe / \stLeaked / \stLost / \stStolen \\
+# \stStolen &\mapsto \stStolen \\
+# \stLeaked &\mapsto \stLeaked / \stStolen \\
+# \stLost &\mapsto \stLost / \stStolen.
 def worse_or_equal(st1, st2): # self is worse or equal than other
-    if st1 == St.THEFT or st2 == St.SAFE:
+    if st1 == St.THEFT or st2 == St.SAFE or st1 == st2:
         return True
     return False
 
@@ -53,28 +57,6 @@ class Scenario():
             if cred == St.LOST and other.credential_states[idx] != St.LOST:
                 return False
         return True
-
-    def priority_rule(self, rule: [int]) -> bool:
-        for x in rule:
-            if self.credential_states[x] == St.SAFE:
-                return True # User wins
-            elif self.credential_states[x] == St.THEFT:
-                return False # Attacker wins
-        return False # Corner case (no safe, theft)
-    
-    # Exception is (rule[1]) < (rule[2])
-    def priority_rule_with_exception(self, rule:[int]) -> bool:
-        if self.credential_states[rule[0]] == St.LOST:
-            if self.credential_states[rule[1]] == St.SAFE and self.credential_states[rule[2]] == St.THEFT:
-                return False
-            if self.credential_states[rule[1]] == St.THEFT and self.credential_states[rule[2]] == St.SAFE:
-                return True
-        for x in rule:
-            if self.credential_states[x] == St.SAFE:
-                return True # User wins
-            elif self.credential_states[x] == St.THEFT:
-                return False # Attacker wins
-        return False # Corner case (no safe, theft)
 
     # Returns true only if for all credentials are worse or equal. 
     #  In all other cases, returns false.
@@ -143,3 +125,21 @@ def generate_all_special_scenarios(n):
         if is_special(s):
             special_scenarios.append(s)
     return special_scenarios
+
+# Can s1 and s2 be in the same profile?
+# They can't if the complement of one (won by the attacker) is worse or equal to the other (won by the user).
+def can_coexist_in_profile(s1: Scenario, s2: Scenario) -> bool:
+    if complement(s2).worse_or_equal(s1) or complement(s1).worse_or_equal(s2):
+        return False
+    return True
+
+# Special scenario: contains at least one safe and one theft credential
+def is_special(s: Scenario):
+    num_safe = 0
+    num_theft = 0
+    for cred in s.credential_states:
+        if cred == St.SAFE:
+            num_safe = num_safe + 1
+        elif cred == St.THEFT:
+            num_theft = num_theft + 1
+    return num_safe > 0 and num_theft > 0

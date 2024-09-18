@@ -1,9 +1,10 @@
 
-from maximal_mechanisms import MajorityMechanism, PriorityMechanism, enumerate_all_tie_breaking_functions, tie_breaker_function_3creds
+from maximal_mechanisms import *
+from utils import generate_all_binary_tuples
 
 def get_all_majority_profiles():
     # First get all majority profiles
-    all_tie_breaks = enumerate_all_tie_breaking_functions(6)
+    all_tie_breaks = generate_all_binary_tuples(6)
     profiles = []
     for tb in all_tie_breaks:
         m = MajorityMechanism(3, lambda x, y: tie_breaker_function_3creds(x, y, tb))
