@@ -1,11 +1,25 @@
+"""
+This module defines abstract base classes and specific implementations for priority and majority mechanisms.
+"""
+
 import itertools
 import math
 from typing import Callable, List
 from scenarios import Scenario, St, generate_all_scenarios
-from utils import compositions, generate_all_binary_tuples
 
-# define an abstract base class for mechanisms
+# An abstract base class for mechanisms
 class Mechanism:
+    """
+    A mechanism that determines the success of a scenario based on predefined rules.
+
+    Attributes:
+        num_credentials (int): The number of credentials involved in the mechanism.
+
+    Methods:
+        __repr__(): Returns a string representation of the Mechanism instance.
+        succeeds(scenario): Determines if the mechanism succeeds for a given scenario.
+        profile(): Generates and returns a list of scenarios where the mechanism succeeds.
+    """
     def __init__(self, num_credentials):
         self.num_credentials = num_credentials
         pass
@@ -22,7 +36,20 @@ class Mechanism:
 
 # Models both priority and priority with exception mechanisms
 class PriorityMechanism(Mechanism):
-    # A priority mechanism is defined by a rule and whether an exception applies
+    """
+    A mechanism that determines the success of a user based on a priority rule and an optional exception.
+    Attributes:
+        rule (List[int]): A list of integers representing the priority rule.
+        exception (bool): A boolean indicating whether an exception applies to the mechanism.
+    Methods:
+        __init__(rule, exception): Initializes the PriorityMechanism with a given rule and exception flag.
+        is_rule_well_defined(): Checks if the rule is well-defined. A rule is well-defined if it is a permutation of [0, 1, 2, ..., len(rule) - 1].
+        __repr__(): Returns a string representation of the PriorityMechanism, indicating the rule and whether an exception applies.
+        succeeds(scenario): Determines if the mechanism succeeds given a scenario. Applies the appropriate judging function based on the exception flag.
+        priority_judging_function(scenario): The default judging function based on the priority rule. Returns True if a user wins, False if an attacker wins.
+        priority_with_exception_judging_function(scenario): The judging function that considers the exception case. Applies the priority rule normally if the exception does not occur.
+    """
+   # A priority mechanism is defined by a rule and whether an exception applies
     def __init__(self, rule: List[int], exception: bool):
         super().__init__(len(rule))
         self.rule = rule
@@ -75,8 +102,18 @@ class PriorityMechanism(Mechanism):
         # Otherwise, apply the priority rule normally
         return self.priority_judging_function(scenario)
 
-
 class MajorityMechanism(Mechanism):
+    """
+    A mechanism that determines the success of a user based on the majority of credentials.
+    Attributes:
+        num_credentials (int): The number of credentials involved in the mechanism.
+        tie_breaker (Callable[[List[int], List[int]], bool]): A function to resolve ties between user and attacker credentials.
+    Methods:
+        __repr__(): Returns a string representation of the MajorityMechanism instance.
+        succeeds(scenario): Determines if the user succeeds based on the given scenario.
+        number_of_tie_breaks(num_creds): Calculates the number of tie breaks for a given number of credentials.
+        number_of_majority_mechanisms(n): Calculates the number of possible majority mechanisms for a given number of credentials.
+    """
     def __init__(self, num_credentials, 
                  tie_breaker: Callable[[List[int], List[int]], bool]):
         super().__init__(num_credentials)
@@ -117,159 +154,25 @@ class MajorityMechanism(Mechanism):
     def number_of_majority_mechanisms(n):
         return 2**(MajorityMechanism.number_of_tie_breaks(n))
 
-class HierarchicalMechanism(Mechanism):
-    # A hierarchical mechanism is defined by a rule and a tie breaker
-    # The rule is a list of lists, each sublist contains the indices of credentials in a level
-    #   the levels are ordered from the highest to the lowest.
-    #   (Essentially, the rule defines a hierarchy of credentials)
-    # The tie breaker is a function that takes two lists of indices and returns a boolean
-    def __init__(self, num_credentials, 
-                 rule: List[List[int]], 
-                 tie_breaker: Callable[[List[int], List[int]], bool]):
-        super().__init__(num_credentials)
-        self.rule = rule
-        self.tie_breaker = tie_breaker
-        if self.is_rule_well_defined() == False:
-            raise Exception("Rule (%s) is not well defined" % (rule,))
-    
-    def __repr__(self):
-        return """HierarchicalMechanism with %s credentials and 
-                priority rule %s and tie breaker %s""" % (self.num_credentials, self.rule, self.tie_breaker,)
-    
-    def is_rule_well_defined(self):
-        # Merge and sort it
-        rule = sorted([x for sublist in self.rule for x in sublist])
-        # Check if it is of the form [0, 1, 2, ... len(rule) - 1]
-        for i in range(len(rule)):
-            if rule[i] != i:
-                return False
-        return True
-
-    def succeeds(self, scenario) -> bool:
-        user_credentials = [i for (i, cred) in enumerate(scenario.credential_states) 
-                            if cred == St.SAFE or cred == St.LEAKED]
-        attacker_credentials = [i for (i, cred) in enumerate(scenario.credential_states) 
-                                if cred == St.THEFT or cred == St.LEAKED]
-
-        # Go level by level, starting from the highest level
-        for i in range(len(self.rule)):
-            user_credentials_level = len([x for x in user_credentials if x in self.rule[i]])
-            attacker_credentials_level = len([x for x in attacker_credentials if x in self.rule[i]])
-            if user_credentials_level > attacker_credentials_level:
-                return True
-            elif user_credentials_level < attacker_credentials_level:
-                return False
-
-        # If we reach here, we need to apply the tie breaker
-        if user_credentials == attacker_credentials:
-            return False
-        return self.tie_breaker(user_credentials, attacker_credentials)
-
-    # Generate all the unique hierarchies for a given number of credentials
-    #   |hierarchies| = |compositions(n)|
-    @staticmethod
-    def generate_all_hierarchies(n):
-        all_possible_level_counts = compositions(n)
-        hierarchies = []
-        for counts in all_possible_level_counts:
-            hierarchy = []
-            cur_credential = 0
-            for count in counts:
-                hierarchy.append(list(range(cur_credential, cur_credential + count)))
-                cur_credential += count
-            hierarchies.append(hierarchy)
-        return hierarchies
-    
-    # q(L) = \Pi^m_{i=1} (\binom{2l_i}{l_i} - 2^{n}) / 2
-    @staticmethod
-    def number_of_tie_breaks(counts):
-        # check no empty levels
-        if 0 in counts:
-            raise Exception("Empty levels are not allowed")
-        num_creds = sum(counts)
-        result = 1
-        for count in counts:
-            result *= math.comb(2 * count, count)
-        if result % 2 != 0:
-            raise Exception("Result is not a power of 2")
-        return (result - 2**(num_creds)) // 2
-    
-    @staticmethod
-    def number_of_hierarchical_mechanisms(n):
-        hierarchies = HierarchicalMechanism.generate_all_hierarchies(n)
-        total = 0
-        for hierarchy in hierarchies:
-            counts = [len(level) for level in hierarchy]
-            total += 2**(HierarchicalMechanism.number_of_tie_breaks(counts))
-        return total
-
-    # Doesn't bother to omit the isomorphisms and even some blatant duplicates
-    # TODO: Remove the isomorphisms?
-    @staticmethod
-    def get_all_profiles(num_creds):
-        num_levels = num_creds
-        profiles = []
-        rules = HierarchicalMechanism.generate_all_hierarchies(num_levels)
-        print("Generated %s hierarchical rules with %d creds" % (rules, num_creds))
-        for rule in rules:
-            print("New rule: %s" % rule)
-            ties = all_ties_to_break(rule)
-            tie_breaker_options = generate_all_binary_tuples(len(ties))
-            count = 0
-            print("Rule %s has %d tie breakers" % (rule, len(tie_breaker_options)))
-            for tb in tie_breaker_options:
-                count += 1
-                # Output a progress message every 10% of the way
-                if len(tie_breaker_options) > 100 and count % (len(tie_breaker_options) // 10) == 0:
-                    print("Progress: %d/%d" % (count, len(tie_breaker_options)))
-                m = HierarchicalMechanism(num_creds, rule, lambda x, y: break_ties(x, y, ties, tb))
-                p = m.profile()
-                label = "hierarchical with rule %s and tie breaker %s" % (rule, tb)
-                profiles.append((label, p))
-        # print("Generated %d hierarchical profiles with %d creds" % (len(profiles), num_creds))
-        # print(profiles)
-        return profiles
-
 #### We now provide some tools related to tie-breaking functions
 
-def tie_break_inputs_for_hm(credentials):
-    all_possible_inputs = []
-    # Iterate over the length of the submitted set
-    for length in range(len(credentials) + 1):
-        # Generate all possible subsets of the submitted set of the given length
-        S = list(itertools.combinations(credentials, length))
-        for x in list(itertools.product(S, S)):
-            all_possible_inputs.append(x)
-    return all_possible_inputs
-
-def all_ties_to_break(rule):
-    all_possible_inputs_by_level = []
-    for credentials in rule:
-        x = tie_break_inputs_for_hm(credentials)
-        # print(x)
-        all_possible_inputs_by_level.append(x)
-    y = itertools.product(*all_possible_inputs_by_level)
-    all_possible_inputs = [(
-                list(itertools.chain.from_iterable([elem[0] for elem in combination])),  # Merge first elements
-                list(itertools.chain.from_iterable([elem[1] for elem in combination]))   # Merge second elements
-            ) for combination in y]
-    
-    # remove elements where both tuples are the same
-    all_possible_inputs = [x for x in all_possible_inputs if x[0] != x[1]]
-
-    # remove inverse elements
-    final_set = []
-    for x in all_possible_inputs:
-        if x not in final_set and (x[1], x[0]) not in final_set:
-            final_set.append(x)
-    
-    return final_set
-
-# S1 is submitted by the user, S2 is submitted by the attacker
-# all_possible_inputs is a list of tuples, each tuple is a pair of sets
-#   these correspond to the all possible (S1, S2)'s
-# tie_breaker is a list of 0s and 1s, each 0 or 1 corresponds to the evaluation of the corresponding input
 def break_ties(S1, S2, all_possible_inputs, tie_breaker) -> bool:
+    """
+    Determines the outcome of a tie between two sets S1 and S2 based on a predefined tie breaker.
+
+    Args:
+        S1: The user-submitted set involved in the tie.
+        S2: The attacker-submitted set involved in the tie.
+        all_possible_inputs: A list of all possible input pairs that can be compared.
+        tie_breaker: A list of binary evaluations corresponding to each pair in all_possible_inputs.
+
+    Returns:
+        bool: The result of the tie-breaking evaluation. Returns True or False based on the tie_breaker.
+
+    Raises:
+        Exception: If the length of all_possible_inputs does not match the length of tie_breaker.
+        Exception: If the input pair (S1, S2) or (S2, S1) is not found in all_possible_inputs.
+    """
     if len(all_possible_inputs) != len(tie_breaker):
         raise Exception("Input size does not match tie breaker size %s %s" % (all_possible_inputs, tie_breaker))
 
@@ -282,15 +185,41 @@ def break_ties(S1, S2, all_possible_inputs, tie_breaker) -> bool:
     raise Exception("Input not found (%s, %s) in %s" % (S1, S2, all_possible_inputs))
 
 def tie_breaker_function_3creds(S1, S2, tie_breaker) -> bool:
+    """
+    Determines the outcome of a tie-breaking mechanism for three credentials.
+
+    This function generates all possible tie-breaking inputs for three credentials
+    and uses a provided tie-breaking function to resolve ties between two sets of credentials.
+
+    Args:
+        S1 (list): The first set of credentials.
+        S2 (list): The second set of credentials.
+        tie_breaker (function): A function that resolves ties between two sets of credentials.
+
+    Returns:
+        bool: The result of the tie-breaking function applied to the given sets of credentials.
+    """
     all_possible_inputs = generate_tie_break_inputs([0, 1, 2])
     # all_possible_one_inputs = [([0], [1]), ([0], [2]), ([1], [2])] # Omitting ([1], [0]), ([2], [0]), ([2], [1])
     # all_possible_two_inputs = [([0, 1], [1, 2]), ([0, 1], [0, 2]), ([1, 2], [0, 2])] # Omitting symmetric cases
     # all_possible_inputs = all_possible_one_inputs + all_possible_two_inputs
     return break_ties(S1, S2, all_possible_inputs, tie_breaker)
 
-# Given a list of credential indices, generate all possible tie breaker inputs using these credentials
-#   Omits the symmetric cases
 def generate_tie_break_inputs(credential_list: List[int]):
+    """
+    Generates all possible tie-breaking input pairs from a list of credentials.
+
+    This function takes a list of credentials and generates all possible pairs of 
+    subsets (S1, S2) such that S1 and S2 have the same length, S1 is not equal to S2, 
+    and the pair (S2, S1) is not already included in the output list.
+
+    Args:
+        credential_list (List[int]): A list of credentials represented as integers.
+
+    Returns:
+        List[Tuple[List[int], List[int]]]: A list of tuples, where each tuple contains 
+        two lists representing the tie-breaking input pairs.
+    """
     all_possible_inputs = []
     for tie_length in range(len(credential_list)): # 1, 2, ..., len(credentials) - 1
         if tie_length == 0:
@@ -328,17 +257,3 @@ def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List
         if x in S2 and x not in S1:
             return False
     return False
-
-
-# Note: Some clever method to generate all the majority profiles without computing the mechanism..?
-# import itertools
-# from copy import deepcopy
-
-# for v in itertools.product('01', repeat=len(rest)):
-#     profile = deepcopy(majority_profile_prefix)
-#     for i, scenario in enumerate(rest):
-#         if v[i] == '1':
-#             scenario = complement(scenario)
-#         profile.append(scenario)
-#     # print(profile)
-#     majority_profiles.append(profile)

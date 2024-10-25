@@ -1,4 +1,3 @@
-
 # n = 6 for generating tie-breaks for 3 credentials
 # Generate all possible n-tuples, e.g., if n=6, (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
 def generate_all_binary_tuples(n):

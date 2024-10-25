@@ -2,7 +2,7 @@
 
 1. Solidity smart contracts for the priority mechanism can be found in the smart-contracts directory.
 
-2. The main directory contains Python code to play around with different scenarios and the success probabilities of mechanisms
+2. The main directory contains Python code to play around with different scenarios and the success probabilities of mechanisms. More details on this below:
 
 Goals:
 

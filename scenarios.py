@@ -1,3 +1,12 @@
+"""
+This module defines a set of classes and functions to handle scenarios involving different credential states.
+It includes:
+- An enumeration `St` representing different states of credentials (THEFT, LEAKED, LOST, SAFE).
+- A `Scenario` class to represent a scenario with multiple credentials and methods to compare and manipulate them.
+- Functions to generate all possible scenarios and special scenarios.
+- Utility functions to check if scenarios can coexist in a profile and to determine if a scenario is special.
+"""
+
 from enum import Enum
 class St(Enum):
     THEFT = 0

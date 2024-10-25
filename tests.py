@@ -4,8 +4,7 @@ from maximal_mechanisms import *
 import unittest
 
 from three_credentials import *
-from utils import generate_all_binary_tuples, remove_duplicates
-import utils
+from utils import generate_all_binary_tuples
 
 class TestScenarios(unittest.TestCase):
     def test_all_scenarios(self):
@@ -137,23 +136,6 @@ class TestWellDefinedRules(unittest.TestCase):
             pm = PriorityMechanism([2, 4, 1, 3], True)
         except Exception as e:
             self.assertEqual(str(e), "Rule ([2, 4, 1, 3]) is not well defined")
-
-    def test_hierarchical_mechanism_is_rule_well_defined(self):
-        # Test cases for HierarchicalMechanism
-        hm = HierarchicalMechanism(3, [[0, 1], [3, 2]], None)
-        self.assertTrue(hm.is_rule_well_defined())
-        hm = HierarchicalMechanism(9, [[0, 1, 8], [3, 2], [4, 5], [7, 6]], None)
-        self.assertTrue(hm.is_rule_well_defined())
-
-        # Next line throws an exception, so catch it
-        try:
-            hm = HierarchicalMechanism(3, [[0, 1], [1, 2]], None)
-        except Exception as e:
-            self.assertEqual(str(e), "Rule ([[0, 1], [1, 2]]) is not well defined")
-        try:
-            hm = HierarchicalMechanism(3, [[0, 1], [1, 3]], None)
-        except Exception as e:
-            self.assertEqual(str(e), "Rule ([[0, 1], [1, 3]]) is not well defined")
 
 
 class TestPriorityMechanisms(unittest.TestCase):
@@ -361,113 +343,6 @@ class TestMajorityMechanisms(unittest.TestCase):
         #         priority = [priority1, priority2]
         #         m = MajorityMechanism(3, lambda x, y: different_priority_tie_breaker(x, y, priority))
         #         self.assertEqual(len(m.profile()), 28)        
-
-class TestHierarchicalMechanisms(unittest.TestCase):
-    # also tests utils.compositions
-    def test_generate_all_hierarchies(self):
-        all_compositions = utils.compositions(3)
-        self.assertEqual(len(all_compositions), 4)
-        self.assertEqual(all_compositions, [[1, 1, 1], [1, 2], [2, 1], [3]])
-
-        expected_lengths = [1, 2, 4, 8, 16]
-        for length in range(5):
-            self.assertEqual(len(utils.compositions(length + 1)), expected_lengths[length])
-            self.assertEqual(len(HierarchicalMechanism.generate_all_hierarchies(length + 1)), expected_lengths[length])
-
-        all_hierarchies = HierarchicalMechanism.generate_all_hierarchies(3)
-        self.assertEqual(all_hierarchies, [
-            [[0], [1], [2]],
-            [[0], [1, 2]],
-            [[0, 1], [2]],
-            [[0, 1, 2]]
-        ])
-
-    def test_tie_break_inputs_for_hm(self):
-        C = [0]
-        self.assertEqual(len(tie_break_inputs_for_hm(C)), 2) # 2*1 C 1
-        C = [0, 1]
-        self.assertEqual(len(tie_break_inputs_for_hm(C)), 6) # 2*2 C 2
-        self.assertEqual(tie_break_inputs_for_hm(C), [
-            ((), ()),
-            ((0,), (0,)),
-            ((0,), (1,)),
-            ((1,), (0,)),
-            ((1,), (1,)),
-            ((0, 1), (0, 1))
-        ])
-        C = [0, 1, 2]
-        self.assertEqual(len(tie_break_inputs_for_hm(C)), 20) # 2*3 C 3
-        C = [0, 1, 2, 3]
-        self.assertEqual(len(tie_break_inputs_for_hm(C)), 70) # 2*4 C 4
-    
-    def test_all_ties_to_break(self):
-        rule = [[0], [1]]
-        all_possible_inputs = all_ties_to_break(rule)
-        self.assertEqual(len(all_possible_inputs), 0)
-        self.assertEqual(HierarchicalMechanism.number_of_tie_breaks([1, 1]), 0)
-        
-        rule = [[0, 1], [2]]
-        all_possible_inputs = all_ties_to_break(rule)
-        self.assertEqual(len(all_possible_inputs), 2)
-        self.assertEqual(all_possible_inputs, [([0], [1]), ([0, 2], [1, 2])])
-        self.assertEqual(HierarchicalMechanism.number_of_tie_breaks([2, 1]), 2)
-
-        rule = [[0, 2, 3], [1], [4, 5, 6]]
-        self.assertEqual(HierarchicalMechanism.number_of_tie_breaks([3, 1, 3]), 336)
-        all_possible_inputs = all_ties_to_break(rule)
-        self.assertEqual(len(all_possible_inputs), 336)
-
-    def test_three_creds(self):
-        three_cred_majority_profiles = get_all_majority_profiles()
-        three_cred_priority_profiles = get_all_priority_profiles()
-
-        tie_breaks = generate_all_binary_tuples(2)
-        # HM with two creds at L2 and one at L1
-        for tb in tie_breaks:
-            # print("Hierarchical 2-1 with tie breaker", tb)
-            all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
-            hm = HierarchicalMechanism(3, [[0, 1], [2]], lambda x, y: break_ties(x, y, all_possible_inputs, tb))
-            p = hm.profile()
-            self.assertEqual(len(p), 28)
-            # assert that its profile is equal to some majority mechanism
-            x = [(label, p1) for (label, p1) in three_cred_majority_profiles if p1 == p]
-            self.assertEqual(len(x), 1)
-            # print(x[0][0])
-
-        # HM with two creds at L1 and one at L2
-        for tb in tie_breaks:
-            # print("Hierarchical 1-2 with tie breaker", tb)
-            all_possible_inputs = [([0], [1])] + [([0, 2], [1, 2])]
-            hm = HierarchicalMechanism(3, [[2], [0, 1]], lambda x, y: break_ties(x, y, all_possible_inputs, tb))
-            p = hm.profile()
-            self.assertEqual(len(p), 28)
-            x = [(label, p1) for (label, p1) in three_cred_priority_profiles if p1 == p]
-            self.assertEqual(len(x), 1)
-            # print(x[0][0])
-
-    def test_all_two_cred_profiles(self):
-        hm_profiles = HierarchicalMechanism.get_all_profiles(2)
-        self.assertEqual(len(hm_profiles), HierarchicalMechanism.number_of_hierarchical_mechanisms(2))
-        unique_profiles = remove_duplicates(hm_profiles)
-        self.assertEqual(len(unique_profiles), 2)
-
-    def test_all_three_cred_profiles(self):
-        hm_profiles = HierarchicalMechanism.get_all_profiles(3)
-        self.assertEqual(len(hm_profiles), HierarchicalMechanism.number_of_hierarchical_mechanisms(3))
-        profiles = get_all_3cred_profiles()
-        for (label, profile) in hm_profiles:
-            x = [(label2, p) for (label2, p) in profiles if p == profile]
-            self.assertEqual(len(x), 1)
-            # print(label, x[0][0])
-    
-    def test_all_four_cred_profiles(self):
-        hm_profiles = HierarchicalMechanism.get_all_profiles(4)
-    
-    # def test_check_growth_rate_maj_and_hm(self):
-    #     for i in range(1, 9):
-    #         x = HierarchicalMechanism.number_of_hierarchical_mechanisms(i)
-    #         y = MajorityMechanism.number_of_majority_mechanisms(i)
-    #         print(i, x, y, x - y)
 
 if __name__ == '__main__':
     unittest.main()
