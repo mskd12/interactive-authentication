@@ -6,7 +6,7 @@
 
 import itertools
 from scenarios import can_coexist_in_profile, complement, Scenario, generate_all_scenarios, is_special
-from three_credentials import get_all_majority_profiles, get_all_priority_profiles
+from three_credentials import get_all_majority_mechanisms, get_all_priority_mechanisms
 
 num_creds = 3
 all_scenarios = generate_all_scenarios(num_creds)
@@ -23,7 +23,7 @@ print("#special scenarios without complements:", len(special_scenarios_without_c
 optimal_profiles = []
 
 majority_profiles = []
-majority_profiles_raw = get_all_majority_profiles()
+majority_profiles_raw = get_all_majority_mechanisms()
 for (_, profile) in majority_profiles_raw:
     special_scenarios_only = [s for s in profile if is_special(s)]
     majority_profiles.append(special_scenarios_only)
@@ -31,7 +31,7 @@ for (_, profile) in majority_profiles_raw:
 print("#majority profiles:", len(majority_profiles))
 
 priority_profiles = []
-priority_profiles_raw = get_all_priority_profiles()
+priority_profiles_raw = get_all_priority_mechanisms()
 for (_, profile) in priority_profiles_raw:
     special_scenarios_only = [s for s in profile if is_special(s)]
     priority_profiles.append(special_scenarios_only)

@@ -4,8 +4,8 @@ This module defines abstract base classes and specific implementations for prior
 
 import itertools
 import math
-from typing import Callable, List
-from scenarios import Scenario, St, generate_all_scenarios
+from typing import Callable
+from scenarios import CredentialProbabilities, Profile, St, generate_all_scenarios
 
 # An abstract base class for mechanisms
 class Mechanism:
@@ -14,32 +14,42 @@ class Mechanism:
 
     Attributes:
         num_credentials (int): The number of credentials involved in the mechanism.
+        profile (Profile): The profile (scenarios where the mechanism succeeds).
 
     Methods:
         __repr__(): Returns a string representation of the Mechanism instance.
         succeeds(scenario): Determines if the mechanism succeeds for a given scenario.
-        profile(): Generates and returns a list of scenarios where the mechanism succeeds.
     """
     def __init__(self, num_credentials):
         self.num_credentials = num_credentials
-        pass
-
-    def __repr__(self):
+        self.profile = self.compute_profile()
         pass
 
     def succeeds(self, scenario) -> bool:
         pass
 
-    def profile(self) -> List[Scenario]:
+    def label(self) -> str:
+        pass
+
+    def __repr__(self):
+        return self.label()
+
+    def compute_profile(self) -> Profile:
         all_scenarios = generate_all_scenarios(self.num_credentials)
-        return [scenario for scenario in all_scenarios if self.succeeds(scenario)]
+        return Profile([scenario for scenario in all_scenarios if self.succeeds(scenario)])
+
+    def __eq__(self, other):
+        return self.profile == other.profile
+ 
+    def success_probability(self, probabilities: list[CredentialProbabilities]) -> float:
+        return self.profile.success_probability(probabilities)
 
 # Models both priority and priority with exception mechanisms
 class PriorityMechanism(Mechanism):
     """
     A mechanism that determines the success of a user based on a priority rule and an optional exception.
     Attributes:
-        rule (List[int]): A list of integers representing the priority rule.
+        rule (list[int]): A list of integers representing the priority rule.
         exception (bool): A boolean indicating whether an exception applies to the mechanism.
     Methods:
         __init__(rule, exception): Initializes the PriorityMechanism with a given rule and exception flag.
@@ -50,12 +60,12 @@ class PriorityMechanism(Mechanism):
         priority_with_exception_judging_function(scenario): The judging function that considers the exception case. Applies the priority rule normally if the exception does not occur.
     """
    # A priority mechanism is defined by a rule and whether an exception applies
-    def __init__(self, rule: List[int], exception: bool):
-        super().__init__(len(rule))
+    def __init__(self, rule: list[int], exception: bool):
         self.rule = rule
         self.exception = exception
         if self.is_rule_well_defined() == False:
             raise Exception("Rule (%s) is not well defined" % (rule,))
+        super().__init__(len(rule))
     
     def is_rule_well_defined(self):
         # Sort it
@@ -66,11 +76,8 @@ class PriorityMechanism(Mechanism):
                 return False
         return True
     
-    def __repr__(self):
-        if self.exception:
-            return "PriorityMechanism: %s, exception" % (self.rule,)
-        else:
-            return "PriorityMechanism: %s, no exception" % (self.rule,)
+    def label(self):
+        return "priority with rule %s and exception %s" % (self.rule, self.exception)
     
     def succeeds(self, scenario):
         if self.exception:
@@ -107,7 +114,9 @@ class MajorityMechanism(Mechanism):
     A mechanism that determines the success of a user based on the majority of credentials.
     Attributes:
         num_credentials (int): The number of credentials involved in the mechanism.
-        tie_breaker (Callable[[List[int], List[int]], bool]): A function to resolve ties between user and attacker credentials.
+        tie_breaker_func (Callable[[list[int], list[int]], bool]): A function to resolve ties between user and attacker credentials.
+        tie_break_label (list[int]): A list of binary evaluations corresponding to each pair of tie-breaking inputs. It is there solely for labelling purposes.
+    Note: tie_break_label alone should in theory be enough to define a tie breaker. But I had some issues removing tie_breaker_func and solely depending on it.
     Methods:
         __repr__(): Returns a string representation of the MajorityMechanism instance.
         succeeds(scenario): Determines if the user succeeds based on the given scenario.
@@ -115,13 +124,14 @@ class MajorityMechanism(Mechanism):
         number_of_majority_mechanisms(n): Calculates the number of possible majority mechanisms for a given number of credentials.
     """
     def __init__(self, num_credentials, 
-                 tie_breaker: Callable[[List[int], List[int]], bool]):
+                 tie_breaker_func: Callable[[list[int], list[int]], bool],
+                 tie_break_label: list[int]):
+        self.tie_breaker_func = tie_breaker_func
+        self.tie_break_label = tie_break_label
         super().__init__(num_credentials)
-        self.tie_breaker = tie_breaker
     
-    def __repr__(self):
-        return """MajorityMechanism with %s credentials and 
-                tie breaker %s""" % (self.num_credentials, self.tie_breaker,)
+    def label(self):
+        return """majority with %s creds and tie-breaker %s""" % (self.num_credentials, self.tie_break_label,)
     
     def succeeds(self, scenario):
         # Count the number of credentials known to the user and the attacker
@@ -140,7 +150,7 @@ class MajorityMechanism(Mechanism):
         elif user_credentials == attacker_credentials: # Both submit same credentials!
             return False
         else:
-            return self.tie_breaker(user_credentials, attacker_credentials)
+            return self.tie_breaker_func(user_credentials, attacker_credentials)
 
     # (2n C n) - 2**n / 2
     @staticmethod
@@ -205,7 +215,7 @@ def tie_breaker_function_3creds(S1, S2, tie_breaker) -> bool:
     # all_possible_inputs = all_possible_one_inputs + all_possible_two_inputs
     return break_ties(S1, S2, all_possible_inputs, tie_breaker)
 
-def generate_tie_break_inputs(credential_list: List[int]):
+def generate_tie_break_inputs(credential_list: list[int]):
     """
     Generates all possible tie-breaking input pairs from a list of credentials.
 
@@ -214,10 +224,10 @@ def generate_tie_break_inputs(credential_list: List[int]):
     and the pair (S2, S1) is not already included in the output list.
 
     Args:
-        credential_list (List[int]): A list of credentials represented as integers.
+        credential_list (list[int]): A list of credentials represented as integers.
 
     Returns:
-        List[Tuple[List[int], List[int]]]: A list of tuples, where each tuple contains 
+        list[Tuple[list[int], list[int]]]: A list of tuples, where each tuple contains 
         two lists representing the tie-breaking input pairs.
     """
     all_possible_inputs = []
@@ -233,7 +243,7 @@ def generate_tie_break_inputs(credential_list: List[int]):
 ## We now define some specific tie breaking functions (these are included in the above functions)
 
 # Uniform priority tie breaker: applies the priority rule uniformly
-def uniform_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[int]) -> bool:
+def uniform_priority_tie_breaker(S1: list[int], S2: list[int], rule: list[int]) -> bool:
     if len(S1) != len(S2):
         raise Exception("S1 and S2 must have the same length")
     for x in rule:
@@ -245,7 +255,7 @@ def uniform_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[int]) 
 
 # Different priority rule for sets of different lengths
 # rule[i-1] defines priority rule for sets of length i
-def different_priority_tie_breaker(S1: List[int], S2: List[int], rule: List[List[int]]) -> bool:
+def different_priority_tie_breaker(S1: list[int], S2: list[int], rule: list[list[int]]) -> bool:
     if len(S1) != len(S2):
         raise Exception("S1 and S2 must have the same length %s %s" % (S1, S2))
     if len(S1) > len(rule):

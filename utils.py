@@ -1,6 +1,23 @@
 # n = 6 for generating tie-breaks for 3 credentials
 # Generate all possible n-tuples, e.g., if n=6, (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1), ...
-def generate_all_binary_tuples(n):
+def generate_all_binary_tuples(n) -> list[list[int]]:
+    """
+    Generate all binary tuples of length n.
+
+    This function generates a list of all possible binary tuples (lists of 0s and 1s)
+    of a given length n. Each tuple represents a unique combination of binary digits.
+
+    Args:
+        n (int): The length of the binary tuples to generate.
+
+    Returns:
+        list of list of int: A list containing all binary tuples of length n.
+                             Each binary tuple is represented as a list of integers (0s and 1s).
+
+    Example:
+        >>> generate_all_binary_tuples(2)
+        [[0, 0], [1, 0], [0, 1], [1, 1]]
+    """
     all_binary_tuples = []
     for i in range(2**n):
         binary_tuple = []
