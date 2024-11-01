@@ -22,4 +22,6 @@ Interesting or useful extensions:
 
 - A web app that implements task #3.
 
-- Extend above tool for n>3. While we do not know the complete maximal sets, we can at leastbuild a tool that outputs the best mechanism among the known maximal mechanisms. (This should not be too hard..)
+- Analyze which 3-cred maximal set mechanism is good in which settings? E.g., when should you use priority vs majority? Intuition says that majority is better with symmetric credentials (similar failure probs between creds) whereas priority is better with asymmetric ones, but can we arrive at it formally?
+
+- Extend above tool for n>3. While we do not know the complete maximal sets, we can at least build a tool that outputs the best mechanism among the known maximal mechanisms. (This should not be too hard..)
