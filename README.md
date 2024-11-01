@@ -20,7 +20,7 @@ In this repository, you will find the associated code for the CCS'24 work on int
 
 Interesting or useful extensions:
 
-- A web app that implements task #3.
+- A web app that implements task 2.iii.
 
 - Analyze which 3-cred maximal set mechanism is good in which settings? E.g., when should you use priority vs majority? Intuition says that majority is better with symmetric credentials (similar failure probs between creds) whereas priority is better with asymmetric ones, but can we arrive at it formally?
 
