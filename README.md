@@ -12,11 +12,11 @@ In this repository, you will find the associated code for the CCS'24 work on int
 
 2. The main directory contains Python code to play around with different scenarios and the success probabilities of mechanisms. More details on this below:
 
-    1. Given a priority or a majority mechanism, output its profile (DONE: See `maximal_mechanisms.py`)
+    1. Given a priority or a majority mechanism, output its profile (See `maximal_mechanisms.py`)
 
-    2. Write a function that returns the complete maximal set for 3-credential mechanisms (DONE: See `get_complete_maximal_set()` in `three_credentials.py`)
+    2. Write a function that returns the complete maximal set for 3-credential mechanisms (See `get_complete_maximal_set()` in `three_credentials.py`)
 
-    3. Given a probability distribution, output the best mechanism from the complete maximal set. We can do this for 3-credential mechanisms. (DONE: See `best_mechanism.py`)
+    3. Given a probability distribution, output the best mechanism from the complete maximal set. We can do this for 3-credential mechanisms. (See `best_mechanism.py`)
 
 Interesting or useful extensions:
 
