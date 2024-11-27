@@ -1,38 +1,8 @@
-from scenarios import Profile, St, CredentialProbabilities, generate_all_scenarios
-from three_credentials import get_complete_maximal_set
-
-def find_best_mechanisms(probabilities: list[CredentialProbabilities]):
-    """
-    Identifies the best mechanisms based on their success probabilities.
-
-    This function evaluates a list of mechanisms and determines which ones have the highest 
-    success probability given a list of credential probabilities. It iterates through each 
-    mechanism, calculates the total success probability for each scenario in the mechanism's 
-    profile, and compares it to find the best mechanisms.
-
-    Args:
-        probabilities (list[CredentialProbabilities]): A list of credential probabilities 
-        used to calculate the success probability of each mechanism.
-
-    Returns:
-        tuple: A tuple containing the best mechanisms and their success probability
-    """
-    best_mechanisms = []
-    best_profile_value = 0
-    all_mechanisms = get_complete_maximal_set()
-    for M in all_mechanisms:
-        value = 0
-        for scenario in M.profile:
-            value += scenario.success_probability(probabilities)
-        print(value, M)
-        if value > best_profile_value:
-            best_profile_value = value
-            best_mechanisms = [M]
-        elif value == best_profile_value:
-            best_mechanisms.append(M)
-    return (best_mechanisms, best_profile_value)
-
 # HDFC bank analysis below
+
+from scenarios import CredentialProbabilities, Profile, generate_all_scenarios
+from three_credentials import find_best_mechanisms
+
 
 def get_existing_profile():
     """The profile the current HDFC Bank mechanism"""

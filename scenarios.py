@@ -106,6 +106,8 @@ class Scenario():
         return True
 
     def success_probability(self, probabilities: list[CredentialProbabilities]) -> float:
+        if len(probabilities) != self.n:
+            raise ValueError("Number of probabilities must match number of credentials")
         probability = 1
         for i, state in enumerate(self.credential_states):
             probability *= probabilities[i].get_probability(state)

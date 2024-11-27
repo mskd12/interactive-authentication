@@ -16,7 +16,7 @@ In this repository, you will find the associated code for the CCS'24 work on int
 
     2. Write a function that returns the complete maximal set for 3-credential mechanisms (See `get_complete_maximal_set()` in `three_credentials.py`)
 
-    3. Given a probability distribution, output the best mechanism from the complete maximal set. We can do this for 3-credential mechanisms. (See `best_mechanism.py`)
+    3. Given a probability distribution, output the best mechanism from the complete maximal set. We can do this for 3-credential mechanisms. (See `find_best_mechanisms()` in `three_credentials.py`)
 
 Interesting or useful extensions:
 
@@ -24,4 +24,4 @@ Interesting or useful extensions:
 
 - Analyze which 3-cred maximal set mechanism is good in which settings? E.g., when should you use priority vs majority? Intuition says that majority is better with symmetric credentials (similar failure probs between creds) whereas priority is better with asymmetric ones, but can we arrive at it formally?
 
-- Extend above tool for n>3. While we do not know the complete maximal sets, we can at least build a tool that outputs the best mechanism among the known maximal mechanisms. (This should not be too hard..)
+- Extend above tool for n>3. While we do not know the complete maximal sets, we can at least find the best among the known maximal mechanisms.
