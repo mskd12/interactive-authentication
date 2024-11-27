@@ -1,6 +1,6 @@
 # HDFC bank analysis below
 
-from scenarios import CredentialProbabilities, Profile, generate_all_scenarios
+from scenarios import CredentialProbabilities, Profile, St, generate_all_scenarios
 from three_credentials import find_best_mechanisms
 
 
